@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_1i84oil" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.12.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.15.0">
+  <bpmn:process id="VideoSummerizationPipeline" name="VideoSummerizationPipeline" isExecutable="true" camunda:historyTimeToLive="30">
+    <bpmn:startEvent id="StartEvent_1">
+      <bpmn:outgoing>Flow_121n7et</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:endEvent id="Event_1xl6ti9">
+      <bpmn:incoming>Flow_0x68c65</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_121n7et" sourceRef="StartEvent_1" targetRef="readVideofileAndPushtoGCS" />
+    <bpmn:sequenceFlow id="Flow_0ly74af" sourceRef="readVideofileAndPushtoGCS" targetRef="Gateway_1yf333d" />
+    <bpmn:serviceTask id="readVideofileAndPushtoGCS" name="Read video file and push to GCS bucket" camunda:class="com.video.audio.summarization.servicetasks.ReadVideoFileAndUploadToGCSServiceTask">
+      <bpmn:incoming>Flow_121n7et</bpmn:incoming>
+      <bpmn:outgoing>Flow_0ly74af</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1xsa2s8" sourceRef="pullingTranscriptsFromVideo" targetRef="Gateway_0twr5kw" />
+    <bpmn:serviceTask id="pullingTranscriptsFromVideo" name="pull transcripts from video using video intellegence API" camunda:class="com.video.audio.summarization.servicetasks.PullTranscriptsFromVideoServiceTask">
+      <bpmn:incoming>IsFileuploadedtoGCS</bpmn:incoming>
+      <bpmn:outgoing>Flow_1xsa2s8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_1yf333d" default="Flow_18wel5a">
+      <bpmn:incoming>Flow_0ly74af</bpmn:incoming>
+      <bpmn:outgoing>IsFileuploadedtoGCS</bpmn:outgoing>
+      <bpmn:outgoing>Flow_18wel5a</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="IsFileuploadedtoGCS" name="fileupload to GCS is success" sourceRef="Gateway_1yf333d" targetRef="pullingTranscriptsFromVideo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${videofilename != null &amp;&amp; status == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0x68c65" sourceRef="pipelineExecutionMetadata" targetRef="Event_1xl6ti9" />
+    <bpmn:serviceTask id="pipelineExecutionMetadata" name="Pipeline script taks execution logs" camunda:class="com.video.audio.summarization.servicetasks.PipelineExecutionMetaDataServiceTask">
+      <bpmn:incoming>Flow_18wel5a</bpmn:incoming>
+      <bpmn:incoming>Flow_11sev77</bpmn:incoming>
+      <bpmn:incoming>Flow_0s4ot3z</bpmn:incoming>
+      <bpmn:incoming>Flow_1kqkzz4</bpmn:incoming>
+      <bpmn:incoming>Flow_0hgimrt</bpmn:incoming>
+      <bpmn:outgoing>Flow_0x68c65</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1hvinuo" sourceRef="transcriptSummaryUsingVertexAI" targetRef="Gateway_1mlggcn" />
+    <bpmn:serviceTask id="transcriptSummaryUsingVertexAI" name="Summarize transcript usingVertexAI" camunda:class="com.video.audio.summarization.servicetasks.SummarizeTranscriptsViaVertexAIServiceTask">
+      <bpmn:incoming>VideotranscriptNotNull</bpmn:incoming>
+      <bpmn:outgoing>Flow_1hvinuo</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_0twr5kw" default="Flow_11sev77">
+      <bpmn:incoming>Flow_1xsa2s8</bpmn:incoming>
+      <bpmn:outgoing>VideotranscriptNotNull</bpmn:outgoing>
+      <bpmn:outgoing>Flow_11sev77</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="VideotranscriptNotNull" name="VideoTranscript not empty" sourceRef="Gateway_0twr5kw" targetRef="transcriptSummaryUsingVertexAI">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${videotranscripts != null and not videotranscripts.isEmpty() and status}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0bkzo0t" sourceRef="convertTheSummaryToSpecifiedLanguge" targetRef="Gateway_02t97xt" />
+    <bpmn:serviceTask id="convertTheSummaryToSpecifiedLanguge" name="Convert the summary to specified language" camunda:class="com.video.audio.summarization.servicetasks.LanguageTranslationServiceTask">
+      <bpmn:incoming>Flow_03vwz1m</bpmn:incoming>
+      <bpmn:outgoing>Flow_0bkzo0t</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_1mlggcn" default="Flow_0s4ot3z">
+      <bpmn:incoming>Flow_1hvinuo</bpmn:incoming>
+      <bpmn:outgoing>Flow_03vwz1m</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0s4ot3z</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_03vwz1m" name="Summary, Translated Language Code Not null" sourceRef="Gateway_1mlggcn" targetRef="convertTheSummaryToSpecifiedLanguge">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${summary != null &amp;&amp;  !summary.isEmpty()  &amp;&amp; translationLanguageCode != null &amp;&amp; !translationLanguageCode. isEmpty()  &amp;&amp; status == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_18wel5a" sourceRef="Gateway_1yf333d" targetRef="pipelineExecutionMetadata" />
+    <bpmn:sequenceFlow id="Flow_11sev77" sourceRef="Gateway_0twr5kw" targetRef="pipelineExecutionMetadata" />
+    <bpmn:sequenceFlow id="Flow_0s4ot3z" sourceRef="Gateway_1mlggcn" targetRef="pipelineExecutionMetadata" />
+    <bpmn:sequenceFlow id="Flow_1kqkzz4" sourceRef="summaryToTextScript" targetRef="pipelineExecutionMetadata" />
+    <bpmn:serviceTask id="summaryToTextScript" name="Convert Summary Text to audio - save to GCS   bucket" camunda:class="com.video.audio.summarization.servicetasks.ConvertSummaryToAudioServiceTask">
+      <bpmn:incoming>summary_audio_gcs_bucket</bpmn:incoming>
+      <bpmn:outgoing>Flow_1kqkzz4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_02t97xt" default="Flow_0hgimrt">
+      <bpmn:incoming>Flow_0bkzo0t</bpmn:incoming>
+      <bpmn:outgoing>summary_audio_gcs_bucket</bpmn:outgoing>
+      <bpmn:outgoing>Flow_0hgimrt</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="summary_audio_gcs_bucket" name="TransalatedSummary, TTS language not null" sourceRef="Gateway_02t97xt" targetRef="summaryToTextScript">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${translatedText != null &amp;&amp;  !translatedText.isEmpty()  &amp;&amp; ttsLanguageCode != null &amp;&amp; !ttsLanguageCode.isEmpty()  &amp;&amp; status == true}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_0hgimrt" sourceRef="Gateway_02t97xt" targetRef="pipelineExecutionMetadata" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="VideoSummerizationPipeline">
+      <bpmndi:BPMNEdge id="Flow_0hgimrt_di" bpmnElement="Flow_0hgimrt">
+        <di:waypoint x="1260" y="172" />
+        <di:waypoint x="1260" y="240" />
+        <di:waypoint x="1590" y="240" />
+        <di:waypoint x="1590" y="187" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_081ynnb_di" bpmnElement="summary_audio_gcs_bucket" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:border-color="#43a047">
+        <di:waypoint x="1285" y="147" />
+        <di:waypoint x="1390" y="147" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1288" y="100" width="84" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1kqkzz4_di" bpmnElement="Flow_1kqkzz4">
+        <di:waypoint x="1490" y="147" />
+        <di:waypoint x="1540" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0s4ot3z_di" bpmnElement="Flow_0s4ot3z">
+        <di:waypoint x="960" y="172" />
+        <di:waypoint x="960" y="240" />
+        <di:waypoint x="1590" y="240" />
+        <di:waypoint x="1590" y="187" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11sev77_di" bpmnElement="Flow_11sev77">
+        <di:waypoint x="700" y="172" />
+        <di:waypoint x="700" y="240" />
+        <di:waypoint x="1590" y="240" />
+        <di:waypoint x="1590" y="187" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18wel5a_di" bpmnElement="Flow_18wel5a">
+        <di:waypoint x="420" y="172" />
+        <di:waypoint x="420" y="240" />
+        <di:waypoint x="1590" y="240" />
+        <di:waypoint x="1590" y="187" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03vwz1m_di" bpmnElement="Flow_03vwz1m" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:border-color="#43a047">
+        <di:waypoint x="985" y="147" />
+        <di:waypoint x="1090" y="147" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="990" y="83" width="79" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0bkzo0t_di" bpmnElement="Flow_0bkzo0t">
+        <di:waypoint x="1190" y="147" />
+        <di:waypoint x="1235" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_17ph2vt_di" bpmnElement="VideotranscriptNotNull" bioc:stroke="#43a047" color:border-color="#43a047">
+        <di:waypoint x="725" y="147" />
+        <di:waypoint x="800" y="147" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="712" y="106" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1hvinuo_di" bpmnElement="Flow_1hvinuo">
+        <di:waypoint x="900" y="147" />
+        <di:waypoint x="935" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0x68c65_di" bpmnElement="Flow_0x68c65">
+        <di:waypoint x="1640" y="147" />
+        <di:waypoint x="1672" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0jjwls0_di" bpmnElement="IsFileuploadedtoGCS" bioc:stroke="#43a047" color:border-color="#43a047">
+        <di:waypoint x="445" y="147" />
+        <di:waypoint x="530" y="147" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="436" y="116" width="87" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1xsa2s8_di" bpmnElement="Flow_1xsa2s8">
+        <di:waypoint x="630" y="147" />
+        <di:waypoint x="675" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0ly74af_di" bpmnElement="Flow_0ly74af">
+        <di:waypoint x="360" y="147" />
+        <di:waypoint x="395" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_121n7et_di" bpmnElement="Flow_121n7et">
+        <di:waypoint x="215" y="147" />
+        <di:waypoint x="260" y="147" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1" bioc:stroke="#8e24aa" bioc:fill="#e1bee7" color:background-color="#e1bee7" color:border-color="#8e24aa">
+        <dc:Bounds x="179" y="129" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1xl6ti9_di" bpmnElement="Event_1xl6ti9" bioc:stroke="#43a047" bioc:fill="#c8e6c9" color:background-color="#c8e6c9" color:border-color="#43a047">
+        <dc:Bounds x="1672" y="129" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_185k79q_di" bpmnElement="readVideofileAndPushtoGCS" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="260" y="107" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0mout4b_di" bpmnElement="pullingTranscriptsFromVideo" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="530" y="107" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1yf333d_di" bpmnElement="Gateway_1yf333d" isMarkerVisible="true">
+        <dc:Bounds x="395" y="122" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1cxyy68_di" bpmnElement="pipelineExecutionMetadata" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1540" y="107" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_14mn5db_di" bpmnElement="transcriptSummaryUsingVertexAI" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="800" y="107" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0twr5kw_di" bpmnElement="Gateway_0twr5kw" isMarkerVisible="true">
+        <dc:Bounds x="675" y="122" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1r6k0kb_di" bpmnElement="convertTheSummaryToSpecifiedLanguge" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1090" y="107" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1mlggcn_di" bpmnElement="Gateway_1mlggcn" isMarkerVisible="true">
+        <dc:Bounds x="935" y="122" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1olmfsj_di" bpmnElement="summaryToTextScript" bioc:stroke="#1e88e5" bioc:fill="#bbdefb" color:background-color="#bbdefb" color:border-color="#1e88e5">
+        <dc:Bounds x="1390" y="107" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_02t97xt_di" bpmnElement="Gateway_02t97xt" isMarkerVisible="true">
+        <dc:Bounds x="1235" y="122" width="50" height="50" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
