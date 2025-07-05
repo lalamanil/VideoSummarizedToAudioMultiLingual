@@ -24,7 +24,8 @@ public class SummarizeTranscriptsViaVertexAIServiceTask implements JavaDelegate 
 			String summary = VertexAIGeminiAPI.summarizeTranscript(videotranscript);
 
 			if (null != summary && !summary.isEmpty()) {
-				//ApplicationLogger.print("Summary:" + summary);
+				// ApplicationLogger.print("Summary:" + summary);
+				summary = summary.replaceAll("\\*", "");
 				status = true;
 			} else {
 				ApplicationLogger.print("Summmary is null or empty");
