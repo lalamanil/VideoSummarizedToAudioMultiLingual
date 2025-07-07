@@ -29,7 +29,7 @@ This robust Java-based architecture enforces IAM-driven role validation (e.g., r
 The application embodies the fusion of cloud AI, workflow automation, and  language accessibility — a powerful combination demonstrating how cloud-native design can be harnessed to solve real-world multimedia challenges at scale.
 
 
-Please refer to AI-Powered Video Summarization and Multilingual Narration Using Google….pdf 
+**Please refer to AI-Powered Video Summarization and Multilingual Narration Using Google….pdf **
 
 ## License
 
